@@ -83,12 +83,24 @@ public class UserModel {
         public void setCompleted(boolean completed) {
             isCompleted = completed;
         }
+
+        public boolean checkIfCompleted() {
+            for (Question question : questions) {
+                if (question.getStatus().equals("unsolved")) {
+                    isCompleted = false;
+                    return false;
+                }
+            }
+            isCompleted = true;
+            return true;
+        }
     }
 
     // Inner class for Question structure
     public static class Question {
         private String status;  // Status of the question (e.g., solved, unsolved)
         private String url;  // URL to the question on Codeforces
+        private String submission="";
 
         // Getters and Setters
         public String getStatus() {
@@ -105,6 +117,14 @@ public class UserModel {
 
         public void setUrl(String url) {
             this.url = url;
+        }
+
+        public String getSubmission() {
+            return submission;
+        }
+
+        public void setSubmission(String submission) {
+            this.submission = submission;
         }
     }
 }

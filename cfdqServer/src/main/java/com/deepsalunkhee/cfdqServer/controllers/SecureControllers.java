@@ -1,9 +1,12 @@
 package com.deepsalunkhee.cfdqServer.controllers;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -21,18 +24,20 @@ import com.deepsalunkhee.cfdqServer.models.UserModel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
+
 @RestController
 @RequestMapping("api/v1")
 public class SecureControllers {
 
     private static final String problemUrl = "https://codeforces.com/api/problemset.problems?tags=";
+    private static final String problmebase = "https://codeforces.com/problemset/problem/";
     private static final Logger logger = org.slf4j.LoggerFactory.getLogger(SecureControllers.class);
-    
+
     @Autowired
     private UserServices userServices;
 
     @PostMapping("/createweek")
-    public ResponseEntity<String> createWeek(HttpServletRequest request) {
+    public ResponseEntity<List<QueStatus>> createWeek(HttpServletRequest request) {
         Map<String, String> headers = new HashMap<>();
         headers.put("handle", request.getHeader("handle"));
         headers.put("tag", request.getHeader("tag"));
@@ -40,9 +45,32 @@ public class SecureControllers {
         // check if user exists
         UserModel currUser = userServices.getUserByHandle(headers.get("handle"));
         if (currUser == null) {
-            UserModel newUser = new UserModel();
-            newUser.setHandle(headers.get("handle"));
-            userServices.createUser(newUser);
+            // Create a new user
+            currUser = new UserModel();
+
+            // Assign a unique ID if required (MongoDB will auto-generate one if left null)
+            currUser.setId(UUID.randomUUID().toString());
+
+            // Assign the handle for the new user
+            currUser.setHandle(headers.get("handle"));
+
+            // Initialize an empty list of weeks
+            currUser.setWeeks(new ArrayList<>());
+
+            // Initialize the solved set
+            currUser.setSolved(new HashSet<>());
+
+            // Save the user to the database
+            userServices.createUser(currUser);
+
+            System.out.println("New user created with handle: " + headers.get("handle"));
+        }else{
+            //check if previous week is completed if not then return
+            if(currUser.getWeeks().size() > 0 && !currUser.getWeeks().get(currUser.getWeeks().size()-1).checkIfCompleted()){
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(List.of(new QueStatus("", "Previous week is not completed")));
+            }
+
         }
 
         String url = problemUrl + headers.get("tag");
@@ -50,25 +78,22 @@ public class SecureControllers {
         try {
             ResponseEntity<String> responseEntity = restTemplate.getForEntity(url, String.class);
             ResponseEntity<String> userinfo = restTemplate.getForEntity(
-                "https://codeforces.com/api/user.info?handles=" + headers.get("handle"), 
-                String.class
-            );
-            
+                    "https://codeforces.com/api/user.info?handles=" + headers.get("handle"),
+                    String.class);
+
             if (responseEntity.getStatusCode().is2xxSuccessful() && userinfo.getStatusCode().is2xxSuccessful()) {
                 ObjectMapper objectMapper = new ObjectMapper();
-                
+
                 // Use the full path to the nested class for ProblemsResponse
                 SecureControllers.ProblemsResponse problemsResponse = objectMapper.readValue(
-                    responseEntity.getBody(),
-                    SecureControllers.ProblemsResponse.class
-                );
-                
+                        responseEntity.getBody(),
+                        SecureControllers.ProblemsResponse.class);
+
                 // Use the full path to the nested class for UserResponse
                 SecureControllers.UserResponse userResponse = objectMapper.readValue(
-                    userinfo.getBody(), 
-                    SecureControllers.UserResponse.class
-                );
-                
+                        userinfo.getBody(),
+                        SecureControllers.UserResponse.class);
+
                 int currRating = userResponse.getResult().get(0).getRating();
 
                 List<SecureControllers.Problem> problems = problemsResponse.getResult().getProblems();
@@ -78,100 +103,172 @@ public class SecureControllers {
 
                 // Get filtered problems
                 List<SecureControllers.Problem> filteredProblems = problems.stream()
-                    .filter(problem -> problem.getRating() != null &&  // Add null check for rating
-                            problem.getRating() > currRating + 100 && 
-                            problem.getRating() < currRating + 300 &&
-                            !solved.contains(problem.getContestId() + problem.getIndex()))
-                    .limit(7)
-                    .collect(Collectors.toList());
-                
-                logger.info("Filtered problems: " + filteredProblems);
-                return ResponseEntity.ok("Week created");
+                        .filter(problem -> problem.getRating() != null && // Add null check for rating
+                                problem.getRating() > currRating + 100 &&
+                                problem.getRating() < currRating + 300 &&
+                                !solved.contains(problem.getContestId() + problem.getIndex()))
+                        .limit(7)
+                        .collect(Collectors.toList());
+
+                //logger.info("Filtered problems: " + filteredProblems);
+                // createing List of Links of problems
+                List<String> links = filteredProblems.stream()
+                        .map(problem -> problmebase + problem.getContestId() + "/" + problem.getIndex())
+                        .collect(Collectors.toList());
+
+                // create a new week
+                UserModel.Week week = new UserModel.Week();
+                week.setWeekNo(currUser.getWeeks().size() + 1);
+                week.setCompleted(false);
+                List<UserModel.Question> questions = new ArrayList<>();
+                List<QueStatus> queStatus = new ArrayList<>();
+
+                // add questions to the List
+                for(String link:links){
+                    UserModel.Question question = new UserModel.Question();
+                    QueStatus que = new QueStatus(link, "unsolved");
+                    question.setUrl(link);
+                    question.setStatus("unsolved");
+                    questions.add(question);
+                    queStatus.add(que);
+                }
+
+                week.setQuestions(questions);
+
+                // Add the week to the user
+                currUser.getWeeks().add(week);
+
+
+                // Update the user's solved list
+                currUser.getSolved().addAll(
+                        filteredProblems.stream()
+                                .map(problem -> problem.getContestId() + problem.getIndex())
+                                .collect(Collectors.toSet()));
+
+                userServices.updateUser(currUser);
+
+                return ResponseEntity.ok(queStatus);
 
             } else {
-                return ResponseEntity.status(responseEntity.getStatusCode())
-                    .body("Failed to fetch problems");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(List.of(new QueStatus("", "Error fetching problems: " + responseEntity.getStatusCode())));
             }
         } catch (Exception e) {
-            logger.error("Error fetching problems:", e);  // Add error logging
+           // logger.error("Error fetching problems:", e); // Add error logging
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error fetching problems: " + e.getMessage());
+                    .body(List.of(new QueStatus("", "Error fetching problems: " + e.getMessage())));
         }
     }
- 
 
+    @PostMapping("/markSolved")
+    public ResponseEntity<String> markSolved(HttpServletRequest request){
+        String questionUrl= request.getHeader("url");
+        String handle = request.getHeader("handle");
+        String submissionUrl= request.getHeader("submissionUrl");
+
+        UserModel currUser = userServices.getUserByHandle(handle);
+
+        if(currUser == null){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("User not found");
+        }
+
+        // get the ongoing week
+        UserModel.Week week = currUser.getWeeks().get(currUser.getWeeks().size()-1);
+
+        // get the question
+        UserModel.Question question = week.getQuestions().stream()
+                .filter(q -> q.getUrl().equals(questionUrl))
+                .findFirst()
+                .orElse(null);
+        
+        if(question == null){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Question not found");
+        }
+
+        question.setStatus("solved");
+        question.setSubmission(submissionUrl);
+
+        // check if the week is completed
+        week.checkIfCompleted();
+
+        userServices.updateUser(currUser);
+
+        return ResponseEntity.ok("Marked Solved"); 
+    }
 
     public static class ProblemsResponse {
         private String status;
         private Result result;
-    
+
         public String getStatus() {
             return status;
         }
-    
+
         public void setStatus(String status) {
             this.status = status;
         }
-    
+
         public Result getResult() {
             return result;
         }
-    
+
         public void setResult(Result result) {
             this.result = result;
         }
     }
-    
+
     public static class Result {
         private List<Problem> problems;
         private List<ProblemStatistics> problemStatistics;
-    
+
         public List<Problem> getProblems() {
             return problems;
         }
-    
+
         public void setProblems(List<Problem> problems) {
             this.problems = problems;
         }
-    
+
         public List<ProblemStatistics> getProblemStatistics() {
             return problemStatistics;
         }
-    
+
         public void setProblemStatistics(List<ProblemStatistics> problemStatistics) {
             this.problemStatistics = problemStatistics;
         }
     }
-    
+
     public static class ProblemStatistics {
         private int contestId;
         private String index;
         private int solvedCount;
-    
+
         public int getContestId() {
             return contestId;
         }
-    
+
         public void setContestId(int contestId) {
             this.contestId = contestId;
         }
-    
+
         public String getIndex() {
             return index;
         }
-    
+
         public void setIndex(String index) {
             this.index = index;
         }
-    
+
         public int getSolvedCount() {
             return solvedCount;
         }
-    
+
         public void setSolvedCount(int solvedCount) {
             this.solvedCount = solvedCount;
         }
-    
+
         @Override
         public String toString() {
             return "ProblemStatistics{" +
@@ -265,24 +362,24 @@ public class SecureControllers {
     public static class UserResponse {
         private String status;
         private List<infoResult> infoResult;
-    
+
         // Getters and Setters
         public String getStatus() {
             return status;
         }
-    
+
         public void setStatus(String status) {
             this.status = status;
         }
-    
+
         public List<infoResult> getResult() {
             return infoResult;
         }
-    
+
         public void setResult(List<infoResult> result) {
             this.infoResult = result;
         }
-    
+
         @Override
         public String toString() {
             return "UserResponse{" +
@@ -290,7 +387,7 @@ public class SecureControllers {
                     ", result=" + infoResult +
                     '}';
         }
-    
+
         // Nested Result Class
         public static class infoResult {
             private String lastName;
@@ -309,136 +406,136 @@ public class SecureControllers {
             private int maxRating;
             private long registrationTimeSeconds;
             private String maxRank;
-    
+
             // Getters and Setters
             public String getLastName() {
                 return lastName;
             }
-    
+
             public void setLastName(String lastName) {
                 this.lastName = lastName;
             }
-    
+
             public String getCountry() {
                 return country;
             }
-    
+
             public void setCountry(String country) {
                 this.country = country;
             }
-    
+
             public long getLastOnlineTimeSeconds() {
                 return lastOnlineTimeSeconds;
             }
-    
+
             public void setLastOnlineTimeSeconds(long lastOnlineTimeSeconds) {
                 this.lastOnlineTimeSeconds = lastOnlineTimeSeconds;
             }
-    
+
             public String getCity() {
                 return city;
             }
-    
+
             public void setCity(String city) {
                 this.city = city;
             }
-    
+
             public int getRating() {
                 return rating;
             }
-    
+
             public void setRating(int rating) {
                 this.rating = rating;
             }
-    
+
             public int getFriendOfCount() {
                 return friendOfCount;
             }
-    
+
             public void setFriendOfCount(int friendOfCount) {
                 this.friendOfCount = friendOfCount;
             }
-    
+
             public String getTitlePhoto() {
                 return titlePhoto;
             }
-    
+
             public void setTitlePhoto(String titlePhoto) {
                 this.titlePhoto = titlePhoto;
             }
-    
+
             public String getHandle() {
                 return handle;
             }
-    
+
             public void setHandle(String handle) {
                 this.handle = handle;
             }
-    
+
             public String getAvatar() {
                 return avatar;
             }
-    
+
             public void setAvatar(String avatar) {
                 this.avatar = avatar;
             }
-    
+
             public String getFirstName() {
                 return firstName;
             }
-    
+
             public void setFirstName(String firstName) {
                 this.firstName = firstName;
             }
-    
+
             public int getContribution() {
                 return contribution;
             }
-    
+
             public void setContribution(int contribution) {
                 this.contribution = contribution;
             }
-    
+
             public String getOrganization() {
                 return organization;
             }
-    
+
             public void setOrganization(String organization) {
                 this.organization = organization;
             }
-    
+
             public String getRank() {
                 return rank;
             }
-    
+
             public void setRank(String rank) {
                 this.rank = rank;
             }
-    
+
             public int getMaxRating() {
                 return maxRating;
             }
-    
+
             public void setMaxRating(int maxRating) {
                 this.maxRating = maxRating;
             }
-    
+
             public long getRegistrationTimeSeconds() {
                 return registrationTimeSeconds;
             }
-    
+
             public void setRegistrationTimeSeconds(long registrationTimeSeconds) {
                 this.registrationTimeSeconds = registrationTimeSeconds;
             }
-    
+
             public String getMaxRank() {
                 return maxRank;
             }
-    
+
             public void setMaxRank(String maxRank) {
                 this.maxRank = maxRank;
             }
-    
+
             @Override
             public String toString() {
                 return "Result{" +
@@ -462,5 +559,33 @@ public class SecureControllers {
             }
         }
 
-}
+        
+
+    }
+
+    private class QueStatus{
+        private String url;
+        private String  status;
+
+        public QueStatus(String url, String status) {
+            this.url = url;
+            this.status = status;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+    }
 }

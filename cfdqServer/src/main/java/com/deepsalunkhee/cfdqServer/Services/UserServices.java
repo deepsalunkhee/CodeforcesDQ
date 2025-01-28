@@ -24,4 +24,8 @@ public class UserServices {
         return userRepo.findByHandle(handle).orElse(null);
     }
 
+    public UserModel updateUser(UserModel user){
+        return userRepo.save(user);
+    }
+
 }
