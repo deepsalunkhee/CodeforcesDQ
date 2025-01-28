@@ -3,8 +3,9 @@ package com.deepsalunkhee.cfdqServer.models;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Document(collection = "users")
 public class UserModel {
@@ -14,6 +15,7 @@ public class UserModel {
     
     private String handle; // The user's Codeforces handle.
     private List<Week> weeks; // List of weeks, each containing questions.
+    private Set<String> solved;
 
     // Getters and Setters
     public String getId() {
@@ -39,6 +41,17 @@ public class UserModel {
     public void setWeeks(List<Week> weeks) {
         this.weeks = weeks;
     }
+
+    public Set<String> getSolved() {
+        
+        return solved != null ? solved : new HashSet<>();
+    }
+
+    public void setSolved(Set<String> solved) {
+        this.solved = solved;
+    }
+
+    
 
     // Inner class for Week structure
     public static class Week {
