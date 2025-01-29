@@ -34,6 +34,10 @@ public class AuthInterceptor implements HandlerInterceptor {
         String apiKey = request.getHeader("key");
         String apiSecret = request.getHeader("secret");
 
+        logger.info("Handle: " + handle);
+        logger.info("API Key: " + apiKey);
+        logger.info("API Secret: " + apiSecret);
+
         if (handle == null || apiKey == null || apiSecret == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write("Missing authentication headers");
@@ -45,6 +49,8 @@ public class AuthInterceptor implements HandlerInterceptor {
         params.put("handles", handle);
         params.put("time", String.valueOf(System.currentTimeMillis() / 1000));
         params.put("OnlyOnline", "true");
+
+        
 
         // Random string for apiSig
         String randomString = UUID.randomUUID().toString().substring(0, 6);

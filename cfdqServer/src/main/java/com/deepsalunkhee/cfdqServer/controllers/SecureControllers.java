@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.parsing.Problem;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("api/v1")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
 public class SecureControllers {
 
     private static final String problemUrl = "https://codeforces.com/api/problemset.problems?tags=";
@@ -41,6 +43,7 @@ public class SecureControllers {
         Map<String, String> headers = new HashMap<>();
         headers.put("handle", request.getHeader("handle"));
         headers.put("tag", request.getHeader("tag"));
+
 
         // check if user exists
         UserModel currUser = userServices.getUserByHandle(headers.get("handle"));
@@ -68,7 +71,7 @@ public class SecureControllers {
             //check if previous week is completed if not then return
             if(currUser.getWeeks().size() > 0 && !currUser.getWeeks().get(currUser.getWeeks().size()-1).checkIfCompleted()){
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(List.of(new QueStatus("", "Previous week is not completed")));
+                        .body(List.of(new QueStatus("", "Previous week is not completed","","")));
             }
 
         }
@@ -119,6 +122,7 @@ public class SecureControllers {
                 // create a new week
                 UserModel.Week week = new UserModel.Week();
                 week.setWeekNo(currUser.getWeeks().size() + 1);
+                week.setTopic(headers.get("tag"));
                 week.setCompleted(false);
                 List<UserModel.Question> questions = new ArrayList<>();
                 List<QueStatus> queStatus = new ArrayList<>();
@@ -126,11 +130,18 @@ public class SecureControllers {
                 // add questions to the List
                 for(String link:links){
                     UserModel.Question question = new UserModel.Question();
-                    QueStatus que = new QueStatus(link, "unsolved");
+                    String code= link.substring(link.lastIndexOf("/", link.lastIndexOf("/") - 1) + 1).replace("/", "");
+                    QueStatus que = new QueStatus(link, "unsolved",code,headers.get("tag"));
                     question.setUrl(link);
                     question.setStatus("unsolved");
+                    question.setCode(code);
                     questions.add(question);
                     queStatus.add(que);
+                }
+
+                if(questions.size() == 0){
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(List.of(new QueStatus("", "No problems found for the given tag","","")));
                 }
 
                 week.setQuestions(questions);
@@ -151,12 +162,12 @@ public class SecureControllers {
 
             } else {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(List.of(new QueStatus("", "Error fetching problems: " + responseEntity.getStatusCode())));
+                        .body(List.of(new QueStatus("", "Error fetching problems: ","","" + responseEntity.getStatusCode())));
             }
         } catch (Exception e) {
            // logger.error("Error fetching problems:", e); // Add error logging
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(List.of(new QueStatus("", "Error fetching problems: " + e.getMessage())));
+                    .body(List.of(new QueStatus("", "Error fetching problems: ","","" + e.getMessage())));
         }
     }
 
@@ -165,6 +176,8 @@ public class SecureControllers {
         String questionUrl= request.getHeader("url");
         String handle = request.getHeader("handle");
         String submissionUrl= request.getHeader("submissionUrl");
+
+        logger.info("Marking solved: " + questionUrl + " for user: " + handle+ " with submission: "+submissionUrl);
 
         UserModel currUser = userServices.getUserByHandle(handle);
 
@@ -566,10 +579,14 @@ public class SecureControllers {
     private class QueStatus{
         private String url;
         private String  status;
+        private String code;
+        private String maintopic;
 
-        public QueStatus(String url, String status) {
+        public QueStatus(String url, String status, String code, String maintopic) {
             this.url = url;
             this.status = status;
+            this.code = code;
+            this.maintopic = maintopic; 
         }
 
         public String getUrl() {
@@ -586,6 +603,22 @@ public class SecureControllers {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public String getMaintopic() {
+            return maintopic;
+        }
+
+        public void setMaintopic(String maintopic) {
+            this.maintopic = maintopic;
         }
     }
 }

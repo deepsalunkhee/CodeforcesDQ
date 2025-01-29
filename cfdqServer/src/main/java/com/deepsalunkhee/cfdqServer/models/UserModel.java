@@ -56,6 +56,7 @@ public class UserModel {
     // Inner class for Week structure
     public static class Week {
         private int weekNo;  // Week number (1, 2, 3, etc.)
+        private String topic;
         private List<Question> questions;  // List of questions for that week
         private boolean isCompleted;  // Whether the week is completed or not
 
@@ -94,12 +95,21 @@ public class UserModel {
             isCompleted = true;
             return true;
         }
+
+        public String getTopic() {
+            return topic;
+        }
+
+        public void setTopic(String topic) {
+            this.topic = topic;
+        }
     }
 
     // Inner class for Question structure
     public static class Question {
         private String status;  // Status of the question (e.g., solved, unsolved)
         private String url;  // URL to the question on Codeforces
+        private String code;
         private String submission="";
 
         // Getters and Setters
@@ -125,6 +135,14 @@ public class UserModel {
 
         public void setSubmission(String submission) {
             this.submission = submission;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
         }
     }
 }

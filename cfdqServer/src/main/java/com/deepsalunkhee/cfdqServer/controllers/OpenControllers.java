@@ -2,8 +2,11 @@ package com.deepsalunkhee.cfdqServer.controllers;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,7 +18,10 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("api/v1")
+@CrossOrigin(origins = "*",allowedHeaders = "*")
 public class OpenControllers {
+
+    private static final Logger logger = LoggerFactory.getLogger(OpenControllers.class);
 
     @Autowired
     private  UserServices userServices;
@@ -28,11 +34,11 @@ public class OpenControllers {
     @GetMapping("/latestWeek")
     public ResponseEntity<List<QueStatus>>latestWeek(HttpServletRequest request){
 
-        String handle= request.getHeader("handle");
+        String handle= "deepsalunkhee";
         UserModel currUser = userServices.getUserByHandle(handle);
 
         if(currUser == null){
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.ok().body(null);
         }
 
 
@@ -42,27 +48,32 @@ public class OpenControllers {
          UserModel.Week week = currUser.getWeeks().get(currUser.getWeeks().size()-1);
 
          //convert the list of questions to a list of  QueStatus
-        List<QueStatus> questions = week.getQuestions().stream().map(question -> new QueStatus(question.getUrl(), question.getStatus())).toList();
+        List<QueStatus> questions = week.getQuestions().stream().map(question -> new QueStatus(question.getUrl(), question.getStatus(),question.getCode(),week.getTopic())).toList();
         
 
         return ResponseEntity.ok(questions);
         
     }
 
-    @GetMapping("/solvedWeeks")
+    @GetMapping("/allweeks")
     public ResponseEntity<List<SolvedWeek>> solvedWeeks(HttpServletRequest request){
 
-        String handle= request.getHeader("handle");
+        String handle= request.getParameter("handle");
+        logger.info("Handle: " + handle);
+        if(handle == null){
+            return ResponseEntity.badRequest().body(null);
+        }
+
         UserModel currUser = userServices.getUserByHandle(handle);
 
         if(currUser == null){
             return ResponseEntity.badRequest().body(null);
         }
 
-        List<SolvedWeek> solvedWeeks = currUser.getWeeks().stream().filter(week -> week.isCompleted()).map(week -> {
+        List<SolvedWeek> solvedWeeks = currUser.getWeeks().stream().map(week -> {
             SolvedWeek solvedWeek = new SolvedWeek();
             solvedWeek.weekNo = week.getWeekNo();
-            solvedWeek.questions = week.getQuestions().stream().map(question -> new SoledQue(question.getUrl(), question.getSubmission())).toList();
+            solvedWeek.questions = week.getQuestions().stream().map(question -> new SoledQue(question.getUrl(), question.getSubmission(),question.getCode(),week.getTopic())).toList();
             return solvedWeek;
         }).toList();
 
@@ -72,10 +83,14 @@ public class OpenControllers {
     private class QueStatus{
         private String url;
         private String  status;
+        private String code;
+        private String mainTopic;
 
-        public QueStatus(String url, String status) {
+        public QueStatus(String url, String status, String code, String mainTopic) {
             this.url = url;
             this.status = status;
+            this.code = code;
+            this.mainTopic = mainTopic;
         }
 
         public String getUrl() {
@@ -92,6 +107,22 @@ public class OpenControllers {
 
         public void setStatus(String status) {
             this.status = status;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public String getMainTopic() {
+            return mainTopic;
+        }
+
+        public void setMainTopic(String mainTopic) {
+            this.mainTopic = mainTopic;
         }
     }
 
@@ -123,10 +154,14 @@ public class OpenControllers {
     private class SoledQue{
         private String url;
         private String submission;
+        private String code;
+        private String mainTopic;
 
-        public SoledQue(String url, String submission) {
+        public SoledQue(String url, String submission, String code, String mainTopic) {
             this.url = url;
             this.submission = submission;
+            this.code = code;
+            this.mainTopic = mainTopic;
         }
 
         public String getUrl() {
@@ -143,6 +178,22 @@ public class OpenControllers {
 
         public void setSubmission(String submission) {
             this.submission = submission;
+        }
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public String getMainTopic() {
+            return mainTopic;
+        }
+
+        public void setMainTopic(String mainTopic) {
+            this.mainTopic = mainTopic;
         }
 
 
