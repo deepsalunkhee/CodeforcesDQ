@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if(request.type === 'createNewWeek'){
         console.log(request.data);
-        fetch('http://localhost:8080/api/v1/createweek', {
+        fetch('https://codeforcesdq.onrender.com/api/v1/createweek', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
