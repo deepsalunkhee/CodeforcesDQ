@@ -1,5 +1,5 @@
-# Use an official Maven image to build the project
-FROM maven:3.8.6-openjdk-11 AS build
+# Use an official Maven image with OpenJDK 21 to build the project
+FROM maven:3.8.6-openjdk-21 AS build
 
 # Set the working directory
 WORKDIR /app
@@ -11,8 +11,8 @@ COPY src ./src
 # Run Maven to build the project and create the JAR file
 RUN mvn clean package -DskipTests
 
-# Use a minimal OpenJDK image for the runtime
-FROM openjdk:11-jre-slim
+# Use a minimal OpenJDK 21 image for the runtime
+FROM openjdk:21-jre-slim
 
 # Set the working directory in the runtime container
 WORKDIR /app
