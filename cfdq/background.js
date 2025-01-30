@@ -1,6 +1,6 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'fetchWeekData') {
-        fetch('http://localhost:8080/api/v1/latestWeek')
+        fetch('https://codeforcesdq.onrender.com/api/v1/latestWeek')
             .then(response => response.json())
             .then(data => {
                 sendResponse({ success: true, data: data });
@@ -33,12 +33,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             .catch(error => {
                 sendResponse({ success: false, error: error.message });
             });
+
+        console.log("hi",request.data);
         return true;
 
     }
 
     if(request.type==='markSubmitted'){
-        fetch('http://localhost:8080/api/v1/markSolved', {
+        fetch('https://codeforcesdq.onrender.com/api/v1/markSolved', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

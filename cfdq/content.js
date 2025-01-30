@@ -51,7 +51,7 @@ async function insertDailyQuestionTable() {
         const weekTopic = weekData[0]?.mainTopic || "No Topic Set";
     
         tableContainer.innerHTML = `
-            <div class="caption titled">→ <a href="http://localhost:8080/api/v1/allweeks?handle=${handle}" target="_blank" style="text-decoration: underline; cursor: pointer; color: inherit;">CFDQ</a>
+            <div class="caption titled">→ <a href="https://codeforcesdq.onrender.com/api/v1/allweeks?handle=${handle}" target="_blank" style="text-decoration: underline; cursor: pointer; color: inherit;">CFDQ</a>
             <button class="newWeek" style="float: right;">new</button>
             <button class="Refresh" style="float: right;">refresh</button>
             </div>
@@ -192,7 +192,7 @@ function showform() {
     formContainer.innerHTML = `
         <div class="roundbox sidebox borderTopRound">
             <div class="caption titled">
-                → <a href="http://localhost:8080/api/v1/allweeks?handle=${handle}" target="_blank" style="text-decoration: underline; cursor: pointer; color: inherit;">CFDQ</a>
+                → <a href="https://codeforcesdq.onrender.com/api/v1/allweeks?handle=${handle}" target="_blank" style="text-decoration: underline; cursor: pointer; color: inherit;">CFDQ</a>
             </div>
             <div style="padding: 0.5em;">
                 <p style="font-size: 1.1em; font-weight: bold; margin-bottom: 0.5em;">Create a New Week</p>
@@ -312,6 +312,8 @@ async function createNewWeek() {
             type: 'createNewWeek',
             data: { handle, key, secret, tag }
         });
+
+        console.log('createResponse:', createResponse);
 
         if (createResponse.success) {
             refreshTable();
