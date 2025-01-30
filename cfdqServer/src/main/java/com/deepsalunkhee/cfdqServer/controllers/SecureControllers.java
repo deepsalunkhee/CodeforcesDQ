@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.parsing.Problem;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -165,7 +164,7 @@ public class SecureControllers {
                         .body(List.of(new QueStatus("", "Error fetching problems: ","","" + responseEntity.getStatusCode())));
             }
         } catch (Exception e) {
-           // logger.error("Error fetching problems:", e); // Add error logging
+           // logger.error("Error fetching problems:", e); 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(List.of(new QueStatus("", "Error fetching problems: ","","" + e.getMessage())));
         }

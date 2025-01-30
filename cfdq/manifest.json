@@ -5,8 +5,7 @@
     "permissions": [
         "storage",
         "activeTab",
-        "scripting",
-        "http://localhost:8080/*"  
+        "scripting" 
     ],
     "host_permissions": [
         "https://codeforces.com/*",

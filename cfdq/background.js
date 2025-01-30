@@ -8,7 +8,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             .catch(error => {
                 sendResponse({ success: false, error: error.message });
             });
-        return true; // Will respond asynchronously
+        return true; 
     }
 
     if(request.type === 'createNewWeek'){
@@ -33,7 +33,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             .catch(error => {
                 sendResponse({ success: false, error: error.message });
             });
-        return true; // Will respond asynchronously
+        return true;
 
     }
 
@@ -50,7 +50,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             },
             body: JSON.stringify(request.data),
         })
-            //if response status is 200, then the problem is marked as solved
+          
             .then(response => response.text())
             .then(data => {
                 sendResponse({ success: true, data: data });
@@ -58,6 +58,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             .catch(error => {
                 sendResponse({ success: false, error: error.message });
             });
-        return true; // Will respond asynchronously
+        return true;
     }
 });

@@ -3,13 +3,13 @@ let weekData = null;
 let secret="";
 let key="";
 let handle="";
+let isProcessingInsertion = false;
+let checker=false;
 
-// Function to insert the table into the sidebar
 async function insertDailyQuestionTable() {
-    // First, ensure any existing table is removed
-    removeExistingTable();
     
-    // If we've already tried inserting, don't proceed
+    removeExistingTable();
+  
     if (hasTableBeenInserted) {
         return;
     }
@@ -25,7 +25,7 @@ async function insertDailyQuestionTable() {
             const response = await getWeekdata();
             
             if (!response.data || response.data.length === 0) {
-                console.log("No data found - showing form");
+                //console.log("No data found - showing form");
                 showform();
                 return;
             }
@@ -36,7 +36,7 @@ async function insertDailyQuestionTable() {
         }
 
         if (!weekData || weekData.length === 0) {
-            console.log("No week data available - showing form");
+            //console.log("No week data available - showing form");
             showform();
             return;
         }
@@ -47,7 +47,7 @@ async function insertDailyQuestionTable() {
         tableContainer.id = "daily-question-extension";
         tableContainer.style.marginBottom = "10px";
     
-        // Safely access weekTopic with optional chaining and fallback
+        
         const weekTopic = weekData[0]?.mainTopic || "No Topic Set";
     
         tableContainer.innerHTML = `
@@ -90,18 +90,18 @@ async function insertDailyQuestionTable() {
         sidebar.prepend(tableContainer);
         hasTableBeenInserted = true;
     
-        // Add event listeners
+        
         addEventListeners(tableContainer);
     
     } catch (error) {
         console.error('Error in insertDailyQuestionTable:', error);
-        // Show form in case of error
+        
         showform();
     }
 }
 
 function addEventListeners(tableContainer) {
-    // Mark Submitted buttons
+    
     const buttons = tableContainer.querySelectorAll(".mark-submitted");
     buttons.forEach((button) => {
         button.addEventListener("click", () => {
@@ -123,12 +123,12 @@ function addEventListeners(tableContainer) {
             });
             
             if (response.success) {
-                console.log('submitted:', response.data);
-                //refresh the table
+                //console.log('submitted:', response.data);
+               
                 refreshTable();
                 return response;
             } else {
-                console.log('not submitted:', );
+                //console.log('not submitted:', );
                 return { success: false, data: [] };
             }
         } catch (error) {
@@ -138,11 +138,10 @@ function addEventListeners(tableContainer) {
 
     }
 
-    // New Week button
     const newWeekButton = tableContainer.querySelector(".newWeek");
     newWeekButton.addEventListener("click", showform);
 
-    // Refresh button
+    
     const refreshButton = tableContainer.querySelector(".Refresh");
     refreshButton.addEventListener("click", async () => {
         hasTableBeenInserted = false;
@@ -161,7 +160,7 @@ async function getWeekdata() {
         });
         
         if (response.success && response.data) {
-            console.log('Data received:', response.data);
+            //console.log('Data received:', response.data);
             return response;
         } else {
             console.log('No data received or empty response');
@@ -174,19 +173,19 @@ async function getWeekdata() {
 }
 
 function showform() {
-    console.log('showform function called');
+    //console.log('showform function called');
     
     const tableContainer = document.getElementById("daily-question-extension");
-    console.log('Found table container:', tableContainer);
+    //console.log('Found table container:', tableContainer);
     
-    // Create form container even if table container doesn't exist
+    
     const formContainer = document.createElement("div");
     formContainer.id = "daily-question-form";
     
-    // Check if form already exists and remove it
+
     const existingForm = document.getElementById("daily-question-form");
     if (existingForm) {
-        console.log('Removing existing form');
+        //console.log('Removing existing form');
         existingForm.remove();
     }
     
@@ -263,7 +262,7 @@ function showform() {
     }
     
     console.log('Inserting form into sidebar');
-    // Insert at the beginning of sidebar if no table container exists
+    
     if (!tableContainer) {
         sidebar.prepend(formContainer);
     } else {
@@ -273,7 +272,7 @@ function showform() {
     
     const createWeekButton = formContainer.querySelector(".createweek");
     if (createWeekButton) {
-        console.log('Adding click event listener to create week button');
+        //console.log('Adding click event listener to create week button');
         createWeekButton.addEventListener("click", createNewWeek);
     }
 }
@@ -284,35 +283,52 @@ async function createNewWeek() {
     const secret = document.getElementById("secret").value;
     const tag = document.getElementById("topic").value;
 
-    //sace the data to local storage
-    localStorage.setItem("handle",handle);
-    localStorage.setItem("key",key);
-    localStorage.setItem("secret",secret);
-    
-    console.log("Creating new week with:", { handle, key, secret, tag });
-    
-    // Here you can add the API call to create a new week
     try {
+        // First check if chrome.runtime is still available
+        if (!chrome.runtime) {
+            throw new Error('Extension context invalid');
+        }
+
         const response = await chrome.runtime.sendMessage({
+            type: 'fetchWeekData'
+        });
+
+        if (response.success && response.data && response.data.length > 0) {
+            const currentWeek = response.data;
+            const isCurrentWeekSolved = !currentWeek.some(question => question.status === "unsolved");
+
+            if (!isCurrentWeekSolved) {
+                alert("Current week is not solved yet, please solve all the questions before creating a new week.");
+                refreshTable();
+                return;
+            }
+        }
+
+        localStorage.setItem("handle", handle);
+        localStorage.setItem("key", key);
+        localStorage.setItem("secret", secret);
+
+        const createResponse = await chrome.runtime.sendMessage({
             type: 'createNewWeek',
             data: { handle, key, secret, tag }
         });
-        
-        if (response.success) {
-            console.log('Data received:', response.data);
-            //load the table
-            refreshTable()
-            
-            return response;
+
+        if (createResponse.success) {
+            refreshTable();
+            return createResponse;
         } else {
-            throw new Error(response.error);
+            throw new Error(createResponse.error || 'Failed to create new week');
         }
+
     } catch (error) {
-        console.error('Error fetching week data:', error);
-        throw error;
+        if (error.message === 'Extension context invalid') {
+            alert('The extension needs to be reloaded. Please refresh the page and try again.');
+            window.location.reload();
+        } else {
+            console.error('Error creating new week:', error);
+            alert('Failed to create new week. Please try again.');
+        }
     }
-    
-   
 }
 
 function validateUrl(url) {
@@ -320,16 +336,15 @@ function validateUrl(url) {
     return urlPattern.test(url);
 }
 
-let isProcessingInsertion = false;
 
 const observer = new MutationObserver((mutations) => {
-    // If we're already processing, don't proceed
+   
     if (isProcessingInsertion) {
         return;
     }
 
-    // If we're on a profile page and the sidebar exists
-    if (window.location.pathname.includes("/profile/")) {
+   
+    if (window.location.pathname.includes("/")) {
         const sidebar = document.getElementById("sidebar");
         if (sidebar && !document.getElementById("daily-question-extension")) {
             handle = localStorage.getItem("handle");
@@ -337,14 +352,29 @@ const observer = new MutationObserver((mutations) => {
             secret = localStorage.getItem("secret");
             
             isProcessingInsertion = true;
-            insertDailyQuestionTable().finally(() => {
-                isProcessingInsertion = false;
-            });
+            runTask();
+
+           
         }
     }
 });
 
-// Start observing with more specific target and options
+function runTask() {
+    const intervalId = setInterval(() => {
+        if (!checker) {
+            console.log("Running insertDailyQuestionTable...");
+            insertDailyQuestionTable().finally(() => {
+                isProcessingInsertion = false;
+                checker = true; 
+            });
+        } else {
+            console.log("Stopping execution...");
+            clearInterval(intervalId);
+        }
+    }, 2000); 
+}
+
+
 function startObserver() {
     const targetNode = document.body;
     observer.observe(targetNode, {
@@ -355,10 +385,10 @@ function startObserver() {
     });
 }
 
-// Initialize the observer when the script loads
+
 startObserver();
 
-// Cleanup
+
 window.addEventListener('unload', () => {
     observer.disconnect();
 });
