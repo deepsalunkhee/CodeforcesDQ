@@ -1,5 +1,6 @@
 package com.deepsalunkhee.cfdqServer.interceptors;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -30,6 +31,10 @@ public class AuthInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
+
+        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
+            return true;
+        }
         String handle = request.getHeader("handle");
         String apiKey = request.getHeader("key");
         String apiSecret = request.getHeader("secret");
@@ -50,8 +55,6 @@ public class AuthInterceptor implements HandlerInterceptor {
         params.put("time", String.valueOf(System.currentTimeMillis() / 1000));
         params.put("OnlyOnline", "true");
 
-        
-
         // Random string for apiSig
         String randomString = UUID.randomUUID().toString().substring(0, 6);
 
@@ -70,38 +73,39 @@ public class AuthInterceptor implements HandlerInterceptor {
         // logger.info("Request URL: " + requestUrl);
 
         // Forward the request to the Codeforces API
-        try{
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> responseEntity = restTemplate.getForEntity(requestUrl, String.class);
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> responseEntity = restTemplate.getForEntity(requestUrl, String.class);
 
-        // Parse the response JSON into CodeforcesResponse object
-        ObjectMapper objectMapper = new ObjectMapper();
-        CodeforcesResponse codeforcesResponse = objectMapper.readValue(responseEntity.getBody(),
-                CodeforcesResponse.class);
+            // Parse the response JSON into CodeforcesResponse object
+            ObjectMapper objectMapper = new ObjectMapper();
+            CodeforcesResponse codeforcesResponse = objectMapper.readValue(responseEntity.getBody(),
+                    CodeforcesResponse.class);
 
-        // Access the "status" field
+            // Access the "status" field
 
-        String status = codeforcesResponse.getStatus();
-        // logger.info("Response: " + codeforcesResponse.getResult());
-        logger.info("Status: " + status);
+            String status = codeforcesResponse.getStatus();
+            // logger.info("Response: " + codeforcesResponse.getResult());
+            logger.info("Status: " + status);
 
-        if(status.equals("OK")) {
-            return true;
-        } else {
+            if (status.equals("OK")) {
+                return true;
+            } else {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Invalid authentication headers");
+                return false;
+            }
+        } catch (HttpClientErrorException e) {
+            // Log the exception details for debugging
+            e.printStackTrace();
+
+            // In case of an error communicating with the external service, return
+            // Unauthorized
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid authentication headers");
-            return false;
+            response.getWriter().write("Authentication error with external service");
+            return false; // Stop further processing
         }
-    }catch (HttpClientErrorException e) {
-        // Log the exception details for debugging
-        e.printStackTrace();
-        
-        // In case of an error communicating with the external service, return Unauthorized
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.getWriter().write("Authentication error with external service");
-        return false;  // Stop further processing
-    }
-       
+
     }
 
     private String generateApiSig(String apiSecret, String method, Map<String, String> params, String randomString)
