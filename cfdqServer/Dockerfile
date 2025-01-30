@@ -11,8 +11,8 @@ COPY src ./src
 # Run Maven to build the project and create the JAR file
 RUN mvn clean package -DskipTests
 
-# Use a minimal OpenJDK 21 image for the runtime
-FROM openjdk:21-jre-slim
+# Use a minimal OpenJDK 21 JDK image for the runtime (JDK version is fine for running as well)
+FROM openjdk:21-jdk-slim
 
 # Set the working directory in the runtime container
 WORKDIR /app
