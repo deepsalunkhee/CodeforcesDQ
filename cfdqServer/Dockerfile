@@ -1,14 +1,27 @@
-# Use an official JDK runtime as a parent image
-FROM openjdk:21-jdk
+# Use an official Maven image to build the project
+FROM maven:3.8.6-openjdk-11 AS build
 
 # Set the working directory
 WORKDIR /app
 
-# Copy the JAR file from the target directory
-COPY target/*.jar app.jar
+# Copy the pom.xml and source code to the container
+COPY pom.xml .
+COPY src ./src
 
-# Expose the port (if using Spring Boot, default is 8080)
+# Run Maven to build the project and create the JAR file
+RUN mvn clean package -DskipTests
+
+# Use a minimal OpenJDK image for the runtime
+FROM openjdk:11-jre-slim
+
+# Set the working directory in the runtime container
+WORKDIR /app
+
+# Copy the built JAR file from the build container
+COPY --from=build /app/target/*.jar app.jar
+
+# Expose the port your Spring Boot application will run on
 EXPOSE 8080
 
-# Run the JAR file
-CMD ["java", "-jar", "app.jar"]
+# Command to run the JAR file
+ENTRYPOINT ["java", "-jar", "app.jar"]
