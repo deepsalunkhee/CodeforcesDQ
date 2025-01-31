@@ -28,6 +28,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addMapping("/**")
                 .allowedOrigins(
                     "chrome-extension://pcgdamnijcoeogbeifmbohlcfmgnnlkj",
+                    "chrome-extension://cnhblbpmgfmplcmmcbhpjpcippjeibak",
                     "https://codeforces.com"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
