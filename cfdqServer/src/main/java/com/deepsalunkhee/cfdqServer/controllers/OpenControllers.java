@@ -39,7 +39,7 @@ public class OpenControllers {
 
     @GetMapping("/latestWeek")
     public ResponseEntity<List<QueStatus>>latestWeek(HttpServletRequest request){
-
+        logger.info("Request received for latest week");
         String handle= request.getHeader("handle");
         UserModel currUser = userServices.getUserByHandle(handle);
 

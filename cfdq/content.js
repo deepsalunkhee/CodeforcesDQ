@@ -22,6 +22,7 @@ async function insertDailyQuestionTable() {
 
     try {
         if (!weekData) {
+            console.log('Fetching week data...');
             const response = await getWeekdata();
             
             if (!response.data || response.data.length === 0) {
@@ -156,7 +157,8 @@ function addEventListeners(tableContainer) {
 async function getWeekdata() {
     try {
         const response = await chrome.runtime.sendMessage({
-            type: 'fetchWeekData'
+            type: 'fetchWeekData',
+            data: { handle }
         });
         
         if (response.success && response.data) {
@@ -290,7 +292,8 @@ async function createNewWeek() {
         }
 
         const response = await chrome.runtime.sendMessage({
-            type: 'fetchWeekData'
+            type: 'fetchWeekData',
+            data: { handle }
         });
 
         if (response.success && response.data && response.data.length > 0) {

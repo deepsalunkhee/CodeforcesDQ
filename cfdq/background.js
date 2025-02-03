@@ -1,6 +1,12 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'fetchWeekData') {
-        fetch('https://codeforcesdq.onrender.com/api/v1/latestWeek')
+        fetch('https://codeforcesdq.onrender.com/api/v1/latestWeek',{
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'handle':request.data.handle
+            }
+        })
             .then(response => response.json())
             .then(data => {
                 sendResponse({ success: true, data: data });
@@ -12,7 +18,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if(request.type === 'createNewWeek'){
-        console.log(request.data);
+        //console.log(request.data);
+        //console.log("hi");
         fetch('https://codeforcesdq.onrender.com/api/v1/createweek', {
             method: 'POST',
             headers: {
