@@ -1,6 +1,6 @@
 {
     "name": "Codeforces Daily Question",
-    "version": "1.02",
+    "version": "1.03",
     "manifest_version": 3,
     "host_permissions": [
         "https://codeforces.com/*"
