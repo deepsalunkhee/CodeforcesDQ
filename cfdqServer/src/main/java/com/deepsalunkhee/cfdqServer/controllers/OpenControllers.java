@@ -40,7 +40,7 @@ public class OpenControllers {
     @GetMapping("/latestWeek")
     public ResponseEntity<List<QueStatus>>latestWeek(HttpServletRequest request){
 
-        String handle= "deepsalunkhee";
+        String handle= request.getHeader("handle");
         UserModel currUser = userServices.getUserByHandle(handle);
 
         if(currUser == null){
