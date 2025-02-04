@@ -94,7 +94,8 @@ public class SecureControllers {
                         userinfo.getBody(),
                         SecureControllers.UserResponse.class);
 
-                int currRating = userResponse.getResult().get(0).getRating();
+                int currRating = Math.min(userResponse.getResult().get(0).getRating(),500);
+
 
                 List<SecureControllers.Problem> problems = problemsResponse.getResult().getProblems();
 
