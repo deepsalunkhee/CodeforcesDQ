@@ -95,6 +95,7 @@ public class SecureControllers {
                         SecureControllers.UserResponse.class);
 
                 int currRating = Math.max(userResponse.getResult().get(0).getRating(),500);
+                //int currRating = Math.max(300,500);
 
 
                 List<SecureControllers.Problem> problems = problemsResponse.getResult().getProblems();
@@ -105,8 +106,8 @@ public class SecureControllers {
                 // Get filtered problems
                 List<SecureControllers.Problem> filteredProblems = problems.stream()
                         .filter(problem -> problem.getRating() != null && // Add null check for rating
-                                problem.getRating() > currRating + 100 &&
-                                problem.getRating() < currRating + 300 &&
+                                problem.getRating() >= currRating + 100 &&
+                                problem.getRating() <= currRating + 300 &&
                                 !solved.contains(problem.getContestId() + problem.getIndex()))
                         .limit(7)
                         .collect(Collectors.toList());
